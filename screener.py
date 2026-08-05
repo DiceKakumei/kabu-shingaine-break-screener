@@ -28,10 +28,11 @@ API_BASE = "https://api.jquants.com/v2"
 API_KEY = os.environ["JQUANTS_API_KEY"]
 DISCORD_WEBHOOK_URL = os.environ["DISCORD_WEBHOOK_URL"]
 
+STRATEGY_NAME = "新高値ブレイク投資"  # 投資法/☆新高値ブレイク投資とは.txt に対応
 MAX_PRICE = 500.0
 PER_MIN = 10.0
 PER_MAX = 30.0
-LOOKBACK_CALENDAR_DAYS = 380  # 52週+バッファ
+LOOKBACK_CALENDAR_DAYS = int(os.environ.get("LOOKBACK_CALENDAR_DAYS", "380"))  # 52週+バッファ
 TARGET_MARKETS = {"0111", "0112", "0113"}  # プライム・スタンダード・グロース
 REQUEST_INTERVAL_SEC = 1.1  # Lightプラン(60req/分)に対する安全マージン
 
@@ -137,9 +138,9 @@ def apply_per_filter(candidates):
 
 def notify_discord(candidates):
     if not candidates:
-        content = "本日、新高値ブレイク投資法の条件に合致する銘柄はありませんでした。"
+        content = f"{STRATEGY_NAME}に合う銘柄が今回は見つかりませんでした"
     else:
-        lines = ["**新高値ブレイク投資法 - 本日の候補銘柄**"]
+        lines = [f"**{STRATEGY_NAME} - 本日の候補銘柄**"]
         for c in candidates:
             lines.append(
                 f"- {c['name']}（{c['code']}）"
@@ -152,7 +153,10 @@ def notify_discord(candidates):
     body = json.dumps({"content": content}).encode("utf-8")
     req = urllib.request.Request(
         DISCORD_WEBHOOK_URL, data=body, method="POST",
-        headers={"Content-Type": "application/json"},
+        headers={
+            "Content-Type": "application/json",
+            "User-Agent": "Mozilla/5.0 (compatible; kabu-screener/1.0)",
+        },
     )
     with urllib.request.urlopen(req, timeout=30) as res:
         res.read()
