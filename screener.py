@@ -15,6 +15,7 @@
   DISCORD_WEBHOOK_URL  Discord Webhook URL
 """
 
+import http.client
 import json
 import os
 import sys
@@ -50,6 +51,10 @@ def api_get(path, params):
                 continue
             body = e.read().decode("utf-8", errors="ignore")
             raise RuntimeError(f"J-Quants API error {e.code} for {path}: {body}")
+        except (urllib.error.URLError, OSError, http.client.HTTPException) as e:
+            if attempt == 4:
+                raise RuntimeError(f"J-Quants API connection failed for {path}: {e}")
+            time.sleep(5)
     raise RuntimeError(f"J-Quants API retry exceeded for {path}")
 
 
@@ -74,6 +79,8 @@ def collect_daily_bars(trading_days):
     """銘柄コード -> [(date, close), ...] (日付昇順)"""
     series = {}
     for i, day in enumerate(trading_days):
+        if i % 20 == 0:
+            print(f"  {i}/{len(trading_days)} 日分取得済み...")
         data = api_get("/equities/bars/daily", {"date": day})
         for row in data["data"]:
             code = row["Code"]
