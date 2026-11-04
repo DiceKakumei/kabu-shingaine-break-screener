@@ -15,6 +15,7 @@
   DISCORD_WEBHOOK_URL  Discord Webhook URL
 """
 
+import http.client
 import json
 import os
 import sys
@@ -50,6 +51,10 @@ def api_get(path, params):
                 continue
             body = e.read().decode("utf-8", errors="ignore")
             raise RuntimeError(f"J-Quants API error {e.code} for {path}: {body}")
+        except (http.client.RemoteDisconnected, ConnectionError, urllib.error.URLError, TimeoutError):
+            if attempt == 4:
+                raise
+            time.sleep(3)
     raise RuntimeError(f"J-Quants API retry exceeded for {path}")
 
 
