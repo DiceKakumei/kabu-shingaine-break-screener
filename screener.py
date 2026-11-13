@@ -15,8 +15,10 @@
   DISCORD_WEBHOOK_URL  Discord Webhook URL
 """
 
+import http.client
 import json
 import os
+import socket
 import sys
 import time
 import urllib.error
@@ -40,7 +42,7 @@ REQUEST_INTERVAL_SEC = 1.1  # Lightプラン(60req/分)に対する安全マー�
 def api_get(path, params):
     url = f"{API_BASE}{path}?{urllib.parse.urlencode(params)}"
     req = urllib.request.Request(url, headers={"x-api-key": API_KEY})
-    for attempt in range(5):
+    for attempt in range(8):
         try:
             with urllib.request.urlopen(req, timeout=30) as res:
                 return json.loads(res.read())
@@ -50,6 +52,11 @@ def api_get(path, params):
                 continue
             body = e.read().decode("utf-8", errors="ignore")
             raise RuntimeError(f"J-Quants API error {e.code} for {path}: {body}")
+        except (http.client.RemoteDisconnected, ConnectionError, socket.timeout, urllib.error.URLError) as e:
+            if attempt == 7:
+                raise RuntimeError(f"J-Quants API connection retry exceeded for {path}: {e}")
+            time.sleep(5)
+            continue
     raise RuntimeError(f"J-Quants API retry exceeded for {path}")
 
 
